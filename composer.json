@@ -1,0 +1,21 @@
+{
+    "name": "styde/laravel-test-helpers",
+    "description": "A collection of additional helpers to test your Laravel apps",
+    "type": "library",
+    "require": {
+        "laravel/framework": "6.*"
+    },
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Duilio Palacios",
+            "email": "duilio@styde.net"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Styde\\Testing\\": "src/"
+        }
+    },
+    "minimum-stability": "dev"
+}
