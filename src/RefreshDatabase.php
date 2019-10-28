@@ -5,9 +5,17 @@ namespace Styde\Testing;
 use Illuminate\Contracts\Console\Kernel;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\File;
+use SplFileInfo;
 
 trait RefreshDatabase
 {
+    /**
+     * Time of the last modified migration recorded in memory / cache.
+     *
+     * @var int
+     */
+    private $lastModifiedTimeInMemory;
+
     /**
      * Define hooks to migrate the database before and after each test.
      *
@@ -51,18 +59,22 @@ trait RefreshDatabase
      */
     protected function refreshTestDatabase()
     {
-        if ($this->shouldRefreshMirations()) {
+        if ($this->shouldRefreshMigrations()) {
             $this->artisan('migrate:fresh', [
                 '--drop-views' => $this->shouldDropViews(),
                 '--drop-types' => $this->shouldDropTypes(),
             ]);
 
             $this->app[Kernel::class]->setArtisan(null);
-
-            RefreshDatabaseState::$migrated = true;
         }
 
         $this->beginDatabaseTransaction();
+
+        $this->beforeApplicationDestroyed(function () {
+            $this->app['cache']->store('file')->set('last_migration_modified_time', $this->lastModifiedTimeInMemory);
+
+            RefreshDatabaseState::$migrated = true;
+        });
     }
 
     /**
@@ -134,25 +146,27 @@ trait RefreshDatabase
      *
      * @return bool
      */
-    protected function shouldRefreshMirations()
+    protected function shouldRefreshMigrations()
     {
+        $this->lastModifiedTimeInMemory = $this->app['cache']->store('file')->pull('last_migration_modified_time');
+
         if (RefreshDatabaseState::$migrated) {
             return false;
         }
 
-        $lastModifiedMigration = collect($this->migrationPaths())
+        $lastModifiedTimeInFileSystem = collect($this->migrationPaths())
             ->flatMap(function ($dir) {
                 return File::files($dir);
             })
-            ->max(function ($file) {
+            ->max(function (SplFileInfo $file) {
                 return $file->getMTime();
             });
 
-        if ($this->app['cache']->store('file')->get('last_modified_migration') == $lastModifiedMigration) {
+        if ($this->lastModifiedTimeInMemory == $lastModifiedTimeInFileSystem) {
             return false;
         }
 
-        $this->app['cache']->store('file')->put('last_modified_migration', $lastModifiedMigration);
+        $this->lastModifiedTimeInMemory = $lastModifiedTimeInFileSystem;
 
         return true;
     }
