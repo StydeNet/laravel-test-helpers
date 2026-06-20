@@ -3,7 +3,7 @@
     "description": "A collection of additional helpers to test your Laravel apps",
     "type": "library",
     "require": {
-        "laravel/framework": "6.*"
+        "laravel/framework": "6.* || 12.*"
     },
     "license": "MIT",
     "authors": [
